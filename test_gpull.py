@@ -89,11 +89,19 @@ def git_workspace(tmp_path: Path):
     run_git(repo_c, *env_opts, "add", ".")
     run_git(repo_c, *env_opts, "commit", "-m", "Local change")
 
+    # 4. Setup Local Repo without Remotes
+    repo_d = tmp_path / "repo_noremote"
+    run_git(tmp_path, *env_opts, "init", str(repo_d))
+    (repo_d / "local.txt").write_text("Local only file")
+    run_git(repo_d, *env_opts, "add", ".")
+    run_git(repo_d, *env_opts, "commit", "-m", "Local commit")
+
     return {
         "root": tmp_path,
         "repo_uptodate": repo_a,
         "repo_updated": repo_b,
         "repo_conflict": repo_c,
+        "repo_noremote": repo_d,
     }
 
 
@@ -101,7 +109,7 @@ def test_find_git_repos(git_workspace):
     """Test recursive discovery of git repositories."""
     repos = find_git_repos(git_workspace["root"])
     repo_names = {r.name for r in repos}
-    assert {"repo_uptodate", "repo_updated", "repo_conflict"}.issubset(repo_names)
+    assert {"repo_uptodate", "repo_updated", "repo_conflict", "repo_noremote"}.issubset(repo_names)
 
 
 def test_update_repo_uptodate(git_workspace):
@@ -119,6 +127,13 @@ def test_update_repo_updated(git_workspace):
     assert "git log" in res["output"]
 
 
+def test_update_repo_noremote(git_workspace):
+    """Test git pull on a repo without remote configured."""
+    res = update_repo(git_workspace["repo_noremote"])
+    assert res["status"] == "no_remote"
+    assert "No remote" in res["summary"]
+
+
 def test_update_repo_conflict(git_workspace):
     """Test git pull on a repo with merge conflict."""
     res = update_repo(git_workspace["repo_conflict"])
@@ -131,6 +146,7 @@ def test_generate_html_report(git_workspace, tmp_path):
     results = [
         update_repo(git_workspace["repo_uptodate"]),
         update_repo(git_workspace["repo_updated"]),
+        update_repo(git_workspace["repo_noremote"]),
         update_repo(git_workspace["repo_conflict"]),
     ]
     report_file = tmp_path / "dashboard.html"
@@ -141,7 +157,9 @@ def test_generate_html_report(git_workspace, tmp_path):
     assert "Git Update Dashboard" in content
     assert "repo_uptodate" in content
     assert "repo_updated" in content
+    assert "repo_noremote" in content
     assert "repo_conflict" in content
     assert "badge-up_to_date" in content
     assert "badge-updated" in content
+    assert "badge-no_remote" in content
     assert "badge-failed" in content

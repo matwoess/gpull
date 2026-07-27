@@ -25,6 +25,7 @@ CLEAR_LINE = "\033[K" if USE_COLOR else ""
 # Non-emoji status symbols
 SYM_OK = f"{GREEN}✓{RESET}" if USE_COLOR else "[OK]"
 SYM_UPDATED = f"{BLUE}+{RESET}" if USE_COLOR else "[+]"
+SYM_NO_REMOTE = f"{DIM}•{RESET}" if USE_COLOR else "[-]"
 SYM_FAILED = f"{RED}✗{RESET}" if USE_COLOR else "[!]"
 
 
@@ -85,6 +86,25 @@ def update_repo(repo_path: Path) -> dict:
     """Run git pull on a repository and return execution status and log."""
     start_time = time.time()
     try:
+        # Check if repository has any remotes configured
+        remotes_check = subprocess.run(
+            ["git", "remote"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if remotes_check.returncode == 0 and not remotes_check.stdout.strip():
+            return {
+                "name": repo_path.name,
+                "path": str(repo_path),
+                "status": "no_remote",
+                "symbol_cli": SYM_NO_REMOTE,
+                "summary": "No remote configured",
+                "output": "$ git remote\n(No remote repository configured for this repository)",
+                "elapsed": round(time.time() - start_time, 2),
+            }
+
         res = subprocess.run(
             ["git", "pull", "--stat"],
             cwd=repo_path,
@@ -102,9 +122,15 @@ def update_repo(repo_path: Path) -> dict:
             raw_output += f"\n\n[stderr]\n{stderr}"
 
         if code != 0:
-            status = "failed"
-            symbol = SYM_FAILED
-            summary = stderr.splitlines()[-1] if stderr else f"Exit code {code}"
+            err_lower = stderr.lower()
+            if "no tracking information" in err_lower or "no remote repository" in err_lower or "specify which branch" in err_lower:
+                status = "no_remote"
+                symbol = SYM_NO_REMOTE
+                summary = "No tracking branch configured"
+            else:
+                status = "failed"
+                symbol = SYM_FAILED
+                summary = stderr.splitlines()[-1] if stderr else f"Exit code {code}"
         elif "Already up to date." in stdout or "Already up-to-date." in stdout:
             status = "up_to_date"
             symbol = SYM_OK
@@ -198,6 +224,7 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
     total = len(results)
     updated = sum(1 for r in results if r["status"] == "updated")
     up_to_date = sum(1 for r in results if r["status"] == "up_to_date")
+    no_remote = sum(1 for r in results if r["status"] == "no_remote")
     failed = sum(1 for r in results if r["status"] == "failed")
     generated_at = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -207,10 +234,11 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
         status_label = {
             "updated": "Updated",
             "up_to_date": "Up-to-Date",
+            "no_remote": "No Remote",
             "failed": "Failed",
         }.get(status, status)
 
-        sym_char = {"updated": "+", "up_to_date": "✓", "failed": "✗"}.get(status, "•")
+        sym_char = {"updated": "+", "up_to_date": "✓", "no_remote": "•", "failed": "✗"}.get(status, "•")
         formatted_output = format_git_output_html(r["output"])
 
         rows_html.append(f"""
@@ -244,6 +272,7 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
         .replace("{{total}}", str(total))
         .replace("{{up_to_date}}", str(up_to_date))
         .replace("{{updated}}", str(updated))
+        .replace("{{no_remote}}", str(no_remote))
         .replace("{{failed}}", str(failed))
         .replace("{{rows_html}}", "".join(rows_html))
     )

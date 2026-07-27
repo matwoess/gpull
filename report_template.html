@@ -171,6 +171,7 @@
 
         .badge-up_to_date { background: rgba(63, 185, 80, 0.15); color: var(--git-green); border: 1px solid rgba(63, 185, 80, 0.3); }
         .badge-updated { background: rgba(88, 166, 255, 0.15); color: var(--git-blue); border: 1px solid rgba(88, 166, 255, 0.3); }
+        .badge-no_remote { background: rgba(139, 148, 158, 0.15); color: var(--text-dim); border: 1px solid rgba(139, 148, 158, 0.3); }
         .badge-failed { background: rgba(248, 81, 73, 0.15); color: var(--git-red); border: 1px solid rgba(248, 81, 73, 0.3); }
 
         .repo-info {
@@ -251,6 +252,10 @@
                 <div class="stat-lbl">Updated</div>
             </div>
             <div class="stat-card">
+                <div class="stat-val val-noremote">{{no_remote}}</div>
+                <div class="stat-lbl">No Remote</div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-val val-failed">{{failed}}</div>
                 <div class="stat-lbl">Failed</div>
             </div>
@@ -260,8 +265,9 @@
             <input type="text" id="search" class="search-box" placeholder="Filter repositories..." oninput="filterRepos()">
             <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All ({{total}})</button>
             <button class="filter-btn" data-filter="updated" onclick="setFilter('updated', this)">Updated ({{updated}})</button>
-            <button class="filter-btn" data-filter="failed" onclick="setFilter('failed', this)">Failed ({{failed}})</button>
             <button class="filter-btn" data-filter="up_to_date" onclick="setFilter('up_to_date', this)">Up-to-Date ({{up_to_date}})</button>
+            <button class="filter-btn" data-filter="no_remote" onclick="setFilter('no_remote', this)">No Remote ({{no_remote}})</button>
+            <button class="filter-btn" data-filter="failed" onclick="setFilter('failed', this)">Failed ({{failed}})</button>
         </div>
 
         <div class="repo-list" id="repo-list">
