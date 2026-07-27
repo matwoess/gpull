@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Update Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --git-green: #3fb950;
+            --git-blue: #58a6ff;
+            --git-red: #f85149;
+            --git-yellow: #d29922;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', ui-monospace, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            padding: 24px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .meta {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .stat-lbl {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .val-total { color: var(--text-main); }
+        .val-updated { color: var(--git-blue); }
+        .val-uptodate { color: var(--git-green); }
+        .val-failed { color: var(--git-red); }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 240px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        .search-box:focus {
+            outline: 1px solid var(--git-blue);
+        }
+
+        .filter-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            transition: all 0.15s ease;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            border-color: var(--git-blue);
+            color: var(--git-blue);
+        }
+
+        .repo-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .repo-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .repo-header {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .repo-header:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-width: 105px;
+            justify-content: center;
+        }
+
+        .badge-up_to_date { background: rgba(63, 185, 80, 0.15); color: var(--git-green); border: 1px solid rgba(63, 185, 80, 0.3); }
+        .badge-updated { background: rgba(88, 166, 255, 0.15); color: var(--git-blue); border: 1px solid rgba(88, 166, 255, 0.3); }
+        .badge-failed { background: rgba(248, 81, 73, 0.15); color: var(--git-red); border: 1px solid rgba(248, 81, 73, 0.3); }
+
+        .repo-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+
+        .repo-name {
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .repo-path {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .repo-summary {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toggle-icon {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            transition: transform 0.2s ease;
+        }
+
+        .repo-details {
+            display: none;
+            border-top: 1px solid var(--border-color);
+            background: #090d13;
+            padding: 14px 16px;
+        }
+
+        .git-console {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .git-cmd { color: var(--git-yellow); font-weight: bold; }
+        .git-add { color: var(--git-green); }
+        .git-del { color: var(--git-red); }
+        .git-err { color: var(--git-red); font-weight: bold; }
+        .git-dim { color: var(--text-dim); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>Git Update Dashboard</h1>
+                <div class="meta">Root: {{root_dir}}</div>
+            </div>
+            <div class="meta">Generated: {{generated_at}}</div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-val val-total">{{total}}</div>
+                <div class="stat-lbl">Total Repos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val val-uptodate">{{up_to_date}}</div>
+                <div class="stat-lbl">Up to Date</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val val-updated">{{updated}}</div>
+                <div class="stat-lbl">Updated</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val val-failed">{{failed}}</div>
+                <div class="stat-lbl">Failed</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="search" class="search-box" placeholder="Filter repositories..." oninput="filterRepos()">
+            <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All ({{total}})</button>
+            <button class="filter-btn" data-filter="updated" onclick="setFilter('updated', this)">Updated ({{updated}})</button>
+            <button class="filter-btn" data-filter="failed" onclick="setFilter('failed', this)">Failed ({{failed}})</button>
+            <button class="filter-btn" data-filter="up_to_date" onclick="setFilter('up_to_date', this)">Up-to-Date ({{up_to_date}})</button>
+        </div>
+
+        <div class="repo-list" id="repo-list">
+            {{rows_html}}
+        </div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+
+        function toggleDetails(idx) {
+            const details = document.getElementById(`details-${idx}`);
+            const icon = document.getElementById(`icon-${idx}`);
+            if (details.style.display === 'block') {
+                details.style.display = 'none';
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                details.style.display = 'block';
+                icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function setFilter(filter, btn) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterRepos();
+        }
+
+        function filterRepos() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const cards = document.querySelectorAll('.repo-card');
+
+            cards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                const text = card.getAttribute('data-search');
+                const matchesFilter = (currentFilter === 'all' || status === currentFilter);
+                const matchesSearch = text.includes(query);
+
+                if (matchesFilter && matchesSearch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
