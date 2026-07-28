@@ -141,15 +141,15 @@ def test_update_repo_conflict(git_workspace):
     assert "error" in res["output"].lower() or "conflict" in res["output"].lower()
 
 
-def test_generate_html_report(git_workspace, tmp_path):
-    """Test static HTML dashboard generation."""
+def test_generate_html_report(git_workspace):
+    """Test static HTML dashboard generation and keep the output report."""
     results = [
         update_repo(git_workspace["repo_uptodate"]),
         update_repo(git_workspace["repo_updated"]),
         update_repo(git_workspace["repo_noremote"]),
         update_repo(git_workspace["repo_conflict"]),
     ]
-    report_file = tmp_path / "dashboard.html"
+    report_file = Path(__file__).parent / "sample_report.html"
     generate_html_report(results, git_workspace["root"], report_file)
 
     assert report_file.exists()
