@@ -219,6 +219,30 @@ def format_git_output_html(text: str) -> str:
     return "\n".join(formatted_lines)
 
 
+def format_summary_html(summary: str, status: str) -> str:
+    """Format repo summary with HTML syntax highlighting for stats and errors."""
+    escaped = html.escape(summary)
+    if status == "updated":
+        escaped = re.sub(
+            r"(\d+\s+insertion[s]?\(\+\))",
+            r'<span class="git-add">\1</span>',
+            escaped
+        )
+        escaped = re.sub(
+            r"(\d+\s+deletion[s]?\(-\))",
+            r'<span class="git-del">\1</span>',
+            escaped
+        )
+        return escaped
+    elif status == "failed":
+        return f'<span class="summary-err">{escaped}</span>'
+    elif status == "up_to_date":
+        return f'<span class="summary-uptodate">{escaped}</span>'
+    elif status == "no_remote":
+        return f'<span class="summary-noremote">{escaped}</span>'
+    return escaped
+
+
 def generate_html_report(results: list[dict], root_dir: Path, output_path: Path):
     """Generate static HTML dashboard report."""
     total = len(results)
@@ -240,6 +264,7 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
 
         sym_char = {"updated": "+", "up_to_date": "✓", "no_remote": "•", "failed": "✗"}.get(status, "•")
         formatted_output = format_git_output_html(r["output"])
+        formatted_summary = format_summary_html(r["summary"], status)
 
         rows_html.append(f"""
         <div class="repo-card status-{status}" data-status="{status}" data-search="{html.escape((r['name'] + ' ' + r['path'] + ' ' + r['summary']).lower())}">
@@ -251,7 +276,7 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
                     <span class="repo-name">{html.escape(r['name'])}</span>
                     <span class="repo-path">{html.escape(r['path'])}</span>
                 </div>
-                <div class="repo-summary">{html.escape(r['summary'])}</div>
+                <div class="repo-summary">{formatted_summary}</div>
                 <span class="toggle-icon" id="icon-{idx}">▼</span>
             </div>
             <div class="repo-details" id="details-{idx}">

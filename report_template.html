@@ -158,14 +158,15 @@
         }
 
         .badge {
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 12px;
             font-size: 0.75rem;
             font-weight: bold;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            min-width: 105px;
+            gap: 6px;
+            width: 110px;
+            flex-shrink: 0;
             justify-content: center;
         }
 
@@ -177,18 +178,26 @@
         .repo-info {
             display: flex;
             flex-direction: column;
-            min-width: 200px;
+            width: 320px;
+            flex-shrink: 0;
+            min-width: 0;
         }
 
         .repo-name {
             font-weight: bold;
             font-size: 0.95rem;
             color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .repo-path {
             font-size: 0.75rem;
             color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .repo-summary {
@@ -198,12 +207,43 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        .summary-err {
+            color: var(--git-red);
+            font-weight: 500;
+        }
+
+        .summary-uptodate {
+            color: var(--git-green);
+            opacity: 0.9;
+        }
+
+        .summary-noremote {
+            color: var(--text-dim);
+            font-style: italic;
         }
 
         .toggle-icon {
             color: var(--text-dim);
             font-size: 0.75rem;
             transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .repo-header {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .repo-info {
+                width: calc(100% - 145px);
+            }
+            .repo-summary {
+                width: 100%;
+                flex: none;
+            }
         }
 
         .repo-details {
@@ -222,8 +262,8 @@
         }
 
         .git-cmd { color: var(--git-yellow); font-weight: bold; }
-        .git-add { color: var(--git-green); }
-        .git-del { color: var(--git-red); }
+        .git-add { color: var(--git-green); font-weight: 600; }
+        .git-del { color: var(--git-red); font-weight: 600; }
         .git-err { color: var(--git-red); font-weight: bold; }
         .git-dim { color: var(--text-dim); }
     </style>
