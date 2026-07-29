@@ -163,3 +163,7 @@ def test_generate_html_report(git_workspace):
     assert "badge-updated" in content
     assert "badge-no_remote" in content
     assert "badge-failed" in content
+    assert "closeDetails" in content
+    assert "scrollToTop" in content
+    assert "back-to-top" in content
+    assert "repo-details-actions" in content

@@ -266,6 +266,55 @@
         .git-del { color: var(--git-red); font-weight: 600; }
         .git-err { color: var(--git-red); font-weight: bold; }
         .git-dim { color: var(--text-dim); }
+
+        .repo-details-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .action-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            border-color: var(--git-blue);
+            color: var(--git-blue);
+        }
+
+        .back-to-top-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transition: all 0.2s ease;
+        }
+
+        .back-to-top-btn:hover {
+            border-color: var(--git-blue);
+            color: var(--git-blue);
+        }
     </style>
 </head>
 <body>
@@ -315,10 +364,13 @@
         </div>
     </div>
 
+    <button id="back-to-top" class="back-to-top-btn" onclick="scrollToTop()" title="Jump to Top">↑ Top</button>
+
     <script>
         let currentFilter = 'all';
 
-        function toggleDetails(idx) {
+        function toggleDetails(idx, event) {
+            if (window.getSelection() && window.getSelection().toString().trim().length > 0) return;
             const details = document.getElementById(`details-${idx}`);
             const icon = document.getElementById(`icon-${idx}`);
             if (details.style.display === 'block') {
@@ -329,6 +381,31 @@
                 icon.style.transform = 'rotate(180deg)';
             }
         }
+
+        function closeDetails(idx) {
+            const details = document.getElementById(`details-${idx}`);
+            const icon = document.getElementById(`icon-${idx}`);
+            if (details) details.style.display = 'none';
+            if (icon) icon.style.transform = 'rotate(0deg)';
+            const card = details ? details.closest('.repo-card') : null;
+            if (card) {
+                const rect = card.getBoundingClientRect();
+                if (rect.top < 0) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('back-to-top');
+            if (btn) {
+                btn.style.display = window.scrollY > 300 ? 'block' : 'none';
+            }
+        });
 
         function setFilter(filter, btn) {
             currentFilter = filter;

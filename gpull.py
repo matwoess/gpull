@@ -268,7 +268,7 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
 
         rows_html.append(f"""
         <div class="repo-card status-{status}" data-status="{status}" data-search="{html.escape((r['name'] + ' ' + r['path'] + ' ' + r['summary']).lower())}">
-            <div class="repo-header" onclick="toggleDetails('{idx}')">
+            <div class="repo-header" onclick="toggleDetails('{idx}', event)">
                 <span class="badge badge-{status}">
                     <span class="symbol">{sym_char}</span> {status_label}
                 </span>
@@ -281,6 +281,10 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
             </div>
             <div class="repo-details" id="details-{idx}">
                 <pre class="git-console"><code>{formatted_output}</code></pre>
+                <div class="repo-details-actions">
+                    <button type="button" class="action-btn" onclick="closeDetails('{idx}')">▲ Close</button>
+                    <button type="button" class="action-btn" onclick="scrollToTop()">↑ Jump to Top</button>
+                </div>
             </div>
         </div>
         """)
