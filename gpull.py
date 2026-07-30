@@ -82,8 +82,32 @@ def find_git_repos(root_dir: Path) -> list[Path]:
     return sorted(list(set(repos)))
 
 
+def get_upstream_branch(repo_path: Path) -> str | None:
+    """Find tracking branch or default remote master/main branch."""
+    res = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "@{u}"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+    if res.returncode == 0 and res.stdout.strip():
+        return res.stdout.strip()
+
+    for candidate in ["origin/master", "origin/main"]:
+        res = subprocess.run(
+            ["git", "rev-parse", "--verify", candidate],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode == 0:
+            return candidate
+
+    return None
+
+
 def update_repo(repo_path: Path) -> dict:
-    """Run git pull on a repository and return execution status and log."""
+    """Run git fetch, show new commits and diff vs master, then git pull with stats."""
     start_time = time.time()
     try:
         # Check if repository has any remotes configured
@@ -105,21 +129,49 @@ def update_repo(repo_path: Path) -> dict:
                 "elapsed": round(time.time() - start_time, 2),
             }
 
+        # 1. Fetch latest changes from remote without tags
+        subprocess.run(
+            ["git", "fetch", "--no-tags"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        upstream = get_upstream_branch(repo_path)
+        output_blocks = []
+
+        if upstream:
+            # 2. Start with new commits
+            log_res = subprocess.run(
+                ["git", "log", "--oneline", f"HEAD..{upstream}"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            log_out = log_res.stdout.strip() if log_res.returncode == 0 and log_res.stdout.strip() else "(No new commits)"
+            output_blocks.append(f"$ git log --oneline HEAD..{upstream}\n{log_out}")
+
+        # 3. Only after, do git pull with stats (suppressing tags)
         res = subprocess.run(
-            ["git", "pull", "--stat"],
+            ["git", "pull", "--stat", "--no-tags"],
             cwd=repo_path,
             capture_output=True,
             text=True,
             timeout=60,
         )
-        stdout = res.stdout.strip()
-        stderr = res.stderr.strip()
+        stdout = re.sub(r".*\[new tag\].*\n?", "", res.stdout.strip(), flags=re.IGNORECASE).strip()
+        stderr = re.sub(r".*\[new tag\].*\n?", "", res.stderr.strip(), flags=re.IGNORECASE).strip()
         code = res.returncode
         elapsed = round(time.time() - start_time, 2)
 
-        raw_output = f"$ git pull --stat\n{stdout}"
+        pull_out = f"$ git pull --stat\n{stdout}"
         if stderr:
-            raw_output += f"\n\n[stderr]\n{stderr}"
+            pull_out += f"\n\n[stderr]\n{stderr}"
+        output_blocks.append(pull_out)
+
+        raw_output = "\n\n".join(output_blocks)
 
         if code != 0:
             err_lower = stderr.lower()
@@ -142,16 +194,6 @@ def update_repo(repo_path: Path) -> dict:
             stat_lines = [line for line in lines if "changed" in line]
             summary = stat_lines[-1].strip() if stat_lines else (lines[-1] if lines else "Updated successfully")
 
-            # Fetch recent commits log for updated repos
-            log_res = subprocess.run(
-                ["git", "log", "-n", "5", "--oneline"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-            )
-            if log_res.stdout:
-                raw_output += f"\n\n$ git log -n 5 --oneline\n{log_res.stdout.strip()}"
-
         return {
             "name": repo_path.name,
             "path": str(repo_path),
@@ -169,7 +211,7 @@ def update_repo(repo_path: Path) -> dict:
             "status": "failed",
             "symbol_cli": SYM_FAILED,
             "summary": "Operation timed out (60s)",
-            "output": "Error: Command 'git pull' timed out after 60 seconds.",
+            "output": "Error: Command timed out after 60 seconds.",
             "elapsed": 60.0,
         }
     except Exception as e:
@@ -280,10 +322,11 @@ def generate_html_report(results: list[dict], root_dir: Path, output_path: Path)
                 <span class="toggle-icon" id="icon-{idx}">▼</span>
             </div>
             <div class="repo-details" id="details-{idx}">
-                <pre class="git-console"><code>{formatted_output}</code></pre>
-                <div class="repo-details-actions">
-                    <button type="button" class="action-btn" onclick="closeDetails('{idx}')">▲ Close</button>
-                    <button type="button" class="action-btn" onclick="scrollToTop()">↑ Jump to Top</button>
+                <div class="repo-details-body">
+                    <div class="fold-strip" onclick="closeDetails('{idx}')" title="Click strip to fold">
+                        <span class="fold-strip-hint">▲</span>
+                    </div>
+                    <pre class="git-console"><code>{formatted_output}</code></pre>
                 </div>
             </div>
         </div>

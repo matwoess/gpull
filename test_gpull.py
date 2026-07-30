@@ -124,7 +124,12 @@ def test_update_repo_updated(git_workspace):
     res = update_repo(git_workspace["repo_updated"])
     assert res["status"] == "updated"
     assert "files changed" in res["summary"] or "file changed" in res["summary"]
-    assert "git log" in res["output"]
+    output = res["output"]
+    assert "$ git log --oneline HEAD.." in output
+    assert "$ git pull --stat" in output
+    assert "$ git diff" not in output
+    # Verify order
+    assert output.find("$ git log") < output.find("$ git pull")
 
 
 def test_update_repo_noremote(git_workspace):
@@ -166,4 +171,4 @@ def test_generate_html_report(git_workspace):
     assert "closeDetails" in content
     assert "scrollToTop" in content
     assert "back-to-top" in content
-    assert "repo-details-actions" in content
+    assert "fold-strip" in content
