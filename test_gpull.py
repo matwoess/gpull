@@ -172,3 +172,17 @@ def test_generate_html_report(git_workspace):
     assert "scrollToTop" in content
     assert "back-to-top" in content
     assert "fold-strip" in content
+
+
+def test_update_repo_unauthenticated(tmp_path: Path):
+    """Test update_repo fails smoothly for unauthenticated remote without terminal prompts."""
+    repo = tmp_path / "repo_unauthenticated"
+    env_opts = ["-c", "user.name=TestUser", "-c", "user.email=test@example.com", "-c", "init.defaultBranch=main"]
+    run_git(tmp_path, *env_opts, "init", str(repo))
+    run_git(repo, *env_opts, "remote", "add", "origin", "https://github.com/nonexistent_user_12345/nonexistent_repo.git")
+
+    res = update_repo(repo)
+    assert res["status"] == "failed"
+    assert res["symbol_cli"] is not None
+
+

@@ -4,6 +4,7 @@
 import argparse
 import concurrent.futures
 import html
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -82,13 +83,23 @@ def find_git_repos(root_dir: Path) -> list[Path]:
     return sorted(list(set(repos)))
 
 
-def get_upstream_branch(repo_path: Path) -> str | None:
+def get_git_env() -> dict[str, str]:
+    """Get environment variables for git subprocesses with terminal prompts disabled."""
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    return env
+
+
+def get_upstream_branch(repo_path: Path, env: dict[str, str] | None = None) -> str | None:
     """Find tracking branch or default remote master/main branch."""
+    if env is None:
+        env = get_git_env()
     res = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "@{u}"],
         cwd=repo_path,
         capture_output=True,
         text=True,
+        env=env,
     )
     if res.returncode == 0 and res.stdout.strip():
         return res.stdout.strip()
@@ -99,6 +110,7 @@ def get_upstream_branch(repo_path: Path) -> str | None:
             cwd=repo_path,
             capture_output=True,
             text=True,
+            env=env,
         )
         if res.returncode == 0:
             return candidate
@@ -109,6 +121,7 @@ def get_upstream_branch(repo_path: Path) -> str | None:
 def update_repo(repo_path: Path) -> dict:
     """Run git fetch, show new commits and diff vs master, then git pull with stats."""
     start_time = time.time()
+    git_env = get_git_env()
     try:
         # Check if repository has any remotes configured
         remotes_check = subprocess.run(
@@ -117,6 +130,7 @@ def update_repo(repo_path: Path) -> dict:
             capture_output=True,
             text=True,
             timeout=10,
+            env=git_env,
         )
         if remotes_check.returncode == 0 and not remotes_check.stdout.strip():
             return {
@@ -136,9 +150,10 @@ def update_repo(repo_path: Path) -> dict:
             capture_output=True,
             text=True,
             timeout=30,
+            env=git_env,
         )
 
-        upstream = get_upstream_branch(repo_path)
+        upstream = get_upstream_branch(repo_path, env=git_env)
         output_blocks = []
 
         if upstream:
@@ -149,6 +164,7 @@ def update_repo(repo_path: Path) -> dict:
                 capture_output=True,
                 text=True,
                 timeout=15,
+                env=git_env,
             )
             log_out = log_res.stdout.strip() if log_res.returncode == 0 and log_res.stdout.strip() else "(No new commits)"
             output_blocks.append(f"$ git log --oneline HEAD..{upstream}\n{log_out}")
@@ -160,6 +176,7 @@ def update_repo(repo_path: Path) -> dict:
             capture_output=True,
             text=True,
             timeout=60,
+            env=git_env,
         )
         stdout = re.sub(r".*\[new tag\].*\n?", "", res.stdout.strip(), flags=re.IGNORECASE).strip()
         stderr = re.sub(r".*\[new tag\].*\n?", "", res.stderr.strip(), flags=re.IGNORECASE).strip()
